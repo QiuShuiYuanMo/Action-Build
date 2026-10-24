@@ -792,6 +792,13 @@ jobs:
 
           if [ "${{ github.event.inputs.SUSFS_META }}" != "-1" ]; then
             echo "正在打susfs补丁"
+            # [compat-6.1.141] SUSFS 补丁基于 6.1.176 上下文，先补齐缺失的 include 再打补丁
+            if ! grep -q 'include <trace/hooks/blk.h>' fs/namespace.c; then
+              sed -i 's|#include "internal.h"|#include "internal.h"\n#include <trace/hooks/blk.h>|' fs/namespace.c
+              mkdir -p include/trace/hooks
+              [ -f include/trace/hooks/blk.h ] || printf '/* compat shim for 6.1.141 */\n' > include/trace/hooks/blk.h
+              echo "[compat] 已为 namespace.c 补齐 trace/hooks/blk.h"
+            fi
             patch -p1 < 50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
             echo "susfs_patch完成"
           fi
